@@ -25,12 +25,28 @@ local function adjustNoteContent(blocks)
   return 'SideNote', blocks
 end
 
+-- Function to convert blocks to inlines
+local function blocksToInlines(blocks)
+    local inlines = List:new()
+    for _, block in ipairs(blocks) do
+        if block.t == 'Para' or block.t == 'Plain' then
+            inlines:extend(block.content)
+        elseif block.t == 'LineBlock' then
+            for _, line in ipairs(block.content) do
+                inlines:extend(line)
+                inlines:insert(pandoc.LineBreak())
+            end
+        end
+    end
+    return inlines
+end
+
 -- Inline to HTML conversion with unique identifier
-function inlineToHTML(id, content, isMarginNote)
+function inlineToHTML(id, inlines, isMarginNote)
   local noteClass = isMarginNote and "marginnote" or "sidenote"
   local label = string.format('<label for="sn-%d" class="margin-toggle%s"></label>', id, isMarginNote and "" or " sidenote-number")
   local input = string.format('<input type="checkbox" id="sn-%d" class="margin-toggle"/>', id)
-  local note = string.format('<span class="%s">%s</span>', noteClass, stringify(content))
+  local note = string.format('<span class="%s">%s</span>', noteClass, stringify(inlines))
 
   return pandoc.RawInline('html', label .. input .. note)
 end
@@ -42,23 +58,20 @@ local noteId = 0
 function Note(elem)
   noteId = noteId + 1
   local noteType, blocks = adjustNoteContent(elem.content)
-  local content = pandoc.walk_block(pandoc.Div(blocks), {
-    Str = function(el) return pandoc.Str(stringify(el)) end,
-    Space = function(el) return pandoc.Space() end,
-  })
+  local inlines = blocksToInlines(blocks)
 
   if noteType == 'FootNote' then
     return pandoc.Note(blocks)
   else
-    return inlineToHTML(noteId, content, noteType == 'MarginNote')
+    return inlineToHTML(noteId, inlines, noteType == 'MarginNote')
   end
 end
 
 -- Apply transformations to the document
 return {
   { Pandoc = function(doc)
-      return pandoc.walk_block(pandoc.Pandoc(doc.blocks, doc.meta), {Note = Note})
+      local blocks = pandoc.walk_block(pandoc.Div(doc.blocks), {Note = Note}).content
+      return pandoc.Pandoc(blocks, doc.meta)
     end
   }
 }
-
