@@ -12,7 +12,7 @@ function Pandoc(doc)
             if not title_set then
                 title = pandoc.utils.stringify(block)
                 title_set = true
-                print("set title")
+                print("set title to: " .. title)
                 -- Skip the first level 1 header block to not add it to the article content
             else
                 -- If it's another level 1 header, add it normally
@@ -23,17 +23,16 @@ function Pandoc(doc)
             -- Finish the previous section if it exists and start a new one
             if section then
                 print("adding section to article")
-                print(section)
                 article.content:insert(section)  -- Add the finished section to the article
                 section = nil
             end
             print("adding new section header to article")
             section = pandoc.Div({}, {class = "section"})  -- Start a new section with the header
-            article.content:insert(block)
+            section.content:insert(block)
         else
             -- Add block to the current section if inside a section; otherwise, add to the article directly
             if section then
-                print("adding block to section")
+                -- print("adding block to section")
                 section.content:insert(block)
             else
                 print("adding block directly to article")
@@ -52,17 +51,6 @@ function Pandoc(doc)
     if title then
         doc.meta.pagetitle = pandoc.MetaString(title)
     end
-    -- return pandoc.Pandoc(blocks, doc.meta)
 
-    
-    -- Create a section that includes the paragraph
-    
-    -- Create an article that includes the section
-    -- local a = pandoc.Div({}, {class = "article"})
-    -- a.content:insert(s)
-    -- a.content:insert(s)
-    -- a.content:insert(s)
-    -- Construct the final document with the article as the content
-    -- and an empty metadata table
     return pandoc.Pandoc(article, doc.meta)
 end
