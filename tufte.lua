@@ -1,8 +1,6 @@
 function Pandoc(doc)
-    local blocks = pandoc.List()  -- Store the new blocks in a list
-    local article = pandoc.Div({}, {class = "article"})  -- Create an article div initialized with an empty list
-    local section = pandoc.Div({}, {class = "section"})  -- Create a section div initialized with an empty list
-    local in_section = false  -- Track if we are currently wrapping in a section
+    local article = pandoc.Div({}, {class = "article"})  -- Container for the entire document
+    local section = nil  -- Current section, starts as nil
     local title_set = false
     local title = nil
 
@@ -11,44 +9,48 @@ function Pandoc(doc)
             if not title_set then
                 title = pandoc.utils.stringify(block)
                 title_set = true
-                -- Skip the first level 1 header block to not add it to the article content
+                -- This block is used as the document title, not added to content
+                print("Set document title: " .. title)
             else
-                -- If it's another level 1 header, add it normally
-                article.content:extend({block})
+                -- Add subsequent level 1 headers directly to the article if no open section
+                if not section then
+                    article.content:insert(block)
+                else
+                    section.content:insert(block)
+                end
             end
         elseif block.t == "Header" and block.level == 2 then
-            print('header 2')
-            -- Finish the previous section if it exists and start a new one
-            if in_section then
-                print('new section')
-                article.content:extend({section})  -- Add the finished section to the article
-                section = pandoc.Div({}, {class = "section"})  -- Reset the section
+            if section then
+                -- Close previous section by adding it to the article
+                article.content:insert(section)
+                print("Added section to article")
             end
-            print('weird, this will overwrite section')
-            section = pandoc.Div({block}, {class = "section"})  -- Start a new section with the header
-            in_section = true  -- Mark that we are in a section
+            -- Start a new section with the level 2 header
+            section = pandoc.Div({block}, {class = "section"})
+            print("Started new section with header: " .. pandoc.utils.stringify(block))
         else
-            -- Add block to the current section if inside a section; otherwise, add to the article directly
-            if in_section then
-                section.content:extend({block})
+            if not section then
+                -- Before any section starts, add blocks directly to the article
+                article.content:insert(block)
+                print("Added block directly to article")
             else
-                article.content:extend({block})
+                -- Add block to the open section
+                section.content:insert(block)
             end
         end
     end
 
-    -- Add the last open section if any
-    if in_section then
-        article.content:extend({section})
+    -- If there's an open section at the end, add it to the article
+    if section then
+        article.content:insert(section)
+        print("Added final section to article")
     end
 
-    -- Add the complete article to the document's blocks
-    blocks:extend({article})
-
-    -- Set the document's page title from the first level 1 header if it was captured
+    -- Update document metadata if a title was set
     if title then
         doc.meta.pagetitle = pandoc.MetaString(title)
     end
 
-    return pandoc.Pandoc(blocks, doc.meta)
+    -- Return the complete document
+    return pandoc.Pandoc(article, doc.meta)
 end
