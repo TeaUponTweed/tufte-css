@@ -44,7 +44,7 @@ end
 -- Inline to HTML conversion with unique identifier
 function inlineToHTML(id, inlines, isMarginNote)
   local noteClass = isMarginNote and "marginnote" or "sidenote"
-  local label = string.format('<label for="sn-%d" class="margin-toggle%s"></label>', id, isMarginNote and "" or " sidenote-number")
+  local label = string.format('<label for="sn-%d" class="margin-toggle%s">%s</label>', id, isMarginNote and "" or " sidenote-number", isMarginNote and "&#8853;" or "")
   local input = string.format('<input type="checkbox" id="sn-%d" class="margin-toggle"/>', id)
   local note = string.format('<span class="%s">%s</span>', noteClass, stringify(inlines))
 
